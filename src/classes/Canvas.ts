@@ -1,8 +1,11 @@
 import * as THREE from 'three'
 import Media from './Media'
+import { Size } from '../../types/types'
+import Scroll from './Scroll'
 
 export default class Canvas {
   element: HTMLCanvasElement
+  scroll: Scroll
   //@ts-ignore
   scene: THREE.Scene
   //@ts-ignore
@@ -22,10 +25,15 @@ export default class Canvas {
   raycaster: THREE.Raycaster
   //@ts-ignore
   mouse: THREE.Vector2
+  lastScroll: number
+  scollSpeed: number
 
-  constructor() {
+  constructor({ scroll }: { scroll: Scroll }) {
+    this.scroll = scroll
     this.element = document.getElementById('webgl') as HTMLCanvasElement
     this.time = 0
+    this.lastScroll = 0
+    this.scollSpeed = 0
     this.createClock()
     this.createScene()
     this.createCamera()
@@ -79,9 +87,14 @@ export default class Canvas {
   render() {
     this.time = this.clock.getElapsedTime()
 
+    this.scollSpeed = window.scrollY - this.lastScroll
+    this.lastScroll = window.scrollY
+
     this.medias.forEach((media) => {
       media.render(this.time)
+      media.setScrollSpeed(this.scroll.speed * this.scroll.direction)
     })
+    this.handleScroll()
 
     this.renderer.render(this.scene, this.camera)
   }
@@ -91,21 +104,27 @@ export default class Canvas {
     this.mouse = new THREE.Vector2()
   }
 
-  // onMouseMove(event: MouseEvent) {
-  //   this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-  //   this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+  onMouseMove(event: MouseEvent) {
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
 
-  //   this.raycaster.setFromCamera(this.mouse, this.camera)
-  //   const intersects = this.raycaster.intersectObjects(this.scene.children)
-  //   const target = intersects[0]
-  //   if (target && 'material' in target.object) {
-  //     const targetMesh = intersects[0].object as THREE.Mesh
-  //     ;(targetMesh.material as THREE.RawShaderMaterial).uniforms.uHover.value = target.uv
-  //   }
-  // }
+    this.raycaster.setFromCamera(this.mouse, this.camera)
+    const intersects = this.raycaster.intersectObjects(this.scene.children)
+    const target = intersects[0]
+    if (target && 'material' in target.object) {
+      const targetMesh = intersects[0].object as THREE.Mesh
+      ;(targetMesh.material as THREE.RawShaderMaterial).uniforms.uHover.value = target.uv
+    }
+  }
+
+  handleScroll() {
+    this.medias.forEach((media) => {
+      media.updateScroll(this.scroll.scrollToRender)
+    })
+  }
 
   addEventListeners() {
-    //window.addEventListener('mousemove', this.onMouseMove.bind(this))
+    window.addEventListener('mousemove', this.onMouseMove.bind(this))
     window.addEventListener('resize', this.onResize.bind(this))
     if (this.medias) {
       this.medias.forEach((media) => {

@@ -4,7 +4,6 @@ import { Position, Size } from '../../types/types'
 import vertexShader from '../../assets/shaders/vertex.glsl'
 //@ts-ignore
 import fragmentShader from '../../assets/shaders/fragment.glsl'
-import gsap from 'gsap'
 
 interface MediaProps {
   element: HTMLImageElement
@@ -30,12 +29,14 @@ export default class Media {
   //@ts-ignore
   elementBounds: DOMRect
   time: number
+  currentScroll: number
 
   constructor({ element, scene, sizes, time }: MediaProps) {
     this.element = element
     this.scene = scene
     this.sizes = sizes
     this.time = time
+    this.currentScroll = 0
 
     this.setBounds()
     this.setMeshDimensions()
@@ -52,6 +53,11 @@ export default class Media {
     this.material = new THREE.RawShaderMaterial({
       vertexShader,
       fragmentShader,
+      uniforms: {
+        uTime: {
+          value: this.time,
+        },
+      },
     })
   }
   createMesh() {
@@ -76,6 +82,7 @@ export default class Media {
 
     this.meshPositions.y -= this.meshDimensions.height / 2
     this.meshPositions.y += this.sizes.height / 2
+    this.meshPositions.y -= this.currentScroll
 
     this.mesh.position.x = this.meshPositions.x
     this.mesh.position.y = this.meshPositions.y
@@ -90,6 +97,14 @@ export default class Media {
   render(time: number) {
     this.material.uniforms.uTime.value = time
     this.setMeshPositions()
+  }
+
+  updateScroll(scrollY: number) {
+    this.currentScroll = (-scrollY * this.sizes.height) / window.innerHeight
+  }
+
+  setScrollSpeed(speed: number) {
+    this.material.uniforms.uScrollSpeed.value = speed
   }
 
   onResize() {
